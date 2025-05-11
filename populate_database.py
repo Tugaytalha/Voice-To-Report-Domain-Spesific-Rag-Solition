@@ -1,11 +1,11 @@
 import argparse
 import os
 import shutil
-from langchain.document_loaders.pdf import PyPDFDirectoryLoader
+from langchain_community.document_loaders.pdf import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from get_embedding_function import get_embedding_function
-from langchain.vectorstores.chroma import Chroma
+from langchain_community.vectorstores.chroma import Chroma
 
 
 CHROMA_PATH = "chroma"
@@ -16,16 +16,26 @@ def main():
 
     # Check if the database should be cleared (using the --clear flag).
     parser = argparse.ArgumentParser()
-    parser.add_argument("--reset", action="store_true", help="Reset the database.")
+    parser.add_argument("--reset", action="store_true", help="Reset the database.")    
+    parser.add_argument("--model-type", type=str, help="Specify If model type is sentence-transformer")
+    parser.add_argument("--model-name", type=str, 
+                       default="atasoglu/roberta-small-turkish-clean-uncased-nli-stsb-tr",
+                       help="HuggingFace or Ollama model name or local path")
     args = parser.parse_args()
     if args.reset:
         print("✨ Clearing Database")
         clear_database()
 
+    # Initialize embedding function with appropriate settings
+    embedding_function = get_embedding_function(
+        model_name_or_path=args.model_name,
+        use_sentence_transformer=bool(args.model_type)
+    )
+
     # Create (or update) the data store.
     documents = load_documents()
     chunks = split_documents(documents)
-    add_to_chroma(chunks)
+    add_to_chroma(chunks=chunks, embedding_func=embedding_function)
 
 
 def load_documents():
@@ -43,10 +53,10 @@ def split_documents(documents: list[Document]):
     return text_splitter.split_documents(documents)
 
 
-def add_to_chroma(chunks: list[Document]):
+def add_to_chroma(chunks: list[Document], embedding_func=get_embedding_function()):
     # Load the existing database.
     db = Chroma(
-        persist_directory=CHROMA_PATH, embedding_function=get_embedding_function()
+        persist_directory=CHROMA_PATH, embedding_function=embedding_func
     )
 
     # Calculate Page IDs.
