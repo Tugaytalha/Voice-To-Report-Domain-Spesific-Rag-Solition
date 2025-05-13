@@ -1,14 +1,18 @@
 from query_data import query_rag
 from populate_database import main as populate_db
 import os
+import gradio as gr
+from stt_app import transcribe_audio
+from get_embedding_function import get_embedding_function
 
 
-def process_query(question: str) -> tuple[str, gr.Dataframe]:
+def process_query(audio_path: str, lang = None) -> tuple[str, gr.Dataframe]:
     if not os.path.exists("chroma"):
         return "Error: Database not found. Please populate the database first.", None
 
     try:
-        response, chunks = query_rag(question)
+        question = transcribe_audio(audio_path, lang)
+        response, chunks = query_rag(question, get_embedding_function("emrecan/bert-base-turkish-cased-mean-nli-stsb-tr"))
 
         # Create a DataFrame for display
         df_data = [

@@ -3,13 +3,19 @@ from run_utils import *
 
 
 # Create the Gradio interface
-with gr.Blocks(title="AlbaraKa Document Q&A System (Call Center)") as demo:
+with gr.Blocks(title="Domain Specific RAG") as demo:
     gr.Markdown("# Document Question & Answer System")
 
     with gr.Tab("Query Documents"):
-        query_input = gr.Textbox(
-            label="Enter your question",
-            placeholder="How much money does a player start with in Monopoly?"
+        audio_input = gr.Audio(
+            sources=["upload", "microphone"],  # Allow both sources
+            type="filepath",  # Keep filepath type for both
+            label="Upload Audio File OR Record from Microphone"  # Updated label
+        )
+        lang_input = gr.Textbox(
+            label="Language Code (Optional)",
+            placeholder="e.g., 'en', 'es', 'fr'. Leave blank to auto-detect.",
+            value=""  # Default to empty string (auto-detect)
         )
         query_button = gr.Button("Submit Query")
         output = gr.Textbox(label="Response")
@@ -20,7 +26,7 @@ with gr.Blocks(title="AlbaraKa Document Q&A System (Call Center)") as demo:
         )
         query_button.click(
             fn=process_query,
-            inputs=query_input,
+            inputs=[audio_input, lang_input],
             outputs=[output, chunks_output]
         )
 

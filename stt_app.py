@@ -7,7 +7,7 @@ import torch # Required for checking GPU availability and fp16
 
 # --- Configuration ---
 # MODEL_NAME = "base" # Options: "tiny", "base", "small", "medium", "large"
-MODEL_NAME = "tiny" # Options: "tiny", "base", "small", "medium", "large" # Changed default
+MODEL_NAME = "large-v3-turbo" # Options: "tiny", "base", "small", "medium", "large" # Changed default
                     # Larger models are more accurate but slower and require more VRAM/RAM.
                     # Start with "tiny" or "base" for quicker testing.
 
