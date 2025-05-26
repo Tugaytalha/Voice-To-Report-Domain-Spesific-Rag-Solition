@@ -6,41 +6,46 @@ import warnings
 import torch # Required for checking GPU availability and fp16
 
 # --- Configuration ---
-# MODEL_NAME = "base" # Options: "tiny", "base", "small", "medium", "large"
-MODEL_NAME = "large-v3-turbo" # Options: "tiny", "base", "small", "medium", "large" # Changed default
-                    # Larger models are more accurate but slower and require more VRAM/RAM.
-                    # Start with "tiny" or "base" for quicker testing.
+# Available Whisper models
+WHISPER_MODELS = ["tiny", "base", "small", "medium", "large", "large-v3-turbo"]
+DEFAULT_MODEL = "large-v3-turbo"
 
-# --- Check for GPU and Load Model ---
-# Load the model once when the script starts for efficiency
-print("Checking for GPU...")
-USE_GPU = torch.cuda.is_available()
-compute_dtype = torch.float16 if USE_GPU else torch.float32
+# --- Global variables ---
+model = None
+USE_GPU = False
+compute_dtype = None
 
-print(f"Using {'GPU' if USE_GPU else 'CPU'} for computation.")
-print(f"Loading Whisper model: {MODEL_NAME}...")
-start_time = time.time()
-
-# Load the model onto GPU if available
-try:
-    model = whisper.load_model(MODEL_NAME, device='cuda' if USE_GPU else 'cpu')
-    # Note: whisper.load_model automatically detects GPU if available when device=None,
-    # but specifying it explicitly can be clearer.
-    print(f"Model '{MODEL_NAME}' loaded successfully in {time.time() - start_time:.2f} seconds.")
-
-    # Warm-up the model (optional, can reduce latency of the first transcription)
-    # print("Warming up the model...")
-    # model.transcribe(whisper.silent_audio(30.0), fp16=USE_GPU) # Use fp16=True only if using GPU
-    # print("Model warmed up.")
-
-except Exception as e:
-    print(f"Error loading Whisper model: {e}")
-    print("Please ensure you have installed whisper and its dependencies correctly.")
-    print("If using GPU, ensure PyTorch is installed with CUDA support.")
-    exit() # Exit if model loading fails
+# Function to load the Whisper model
+def load_whisper_model(model_name):
+    global model, USE_GPU, compute_dtype
+    
+    # Check for GPU availability
+    if USE_GPU is False:  # Only check once
+        print("Checking for GPU...")
+        USE_GPU = torch.cuda.is_available()
+        compute_dtype = torch.float16 if USE_GPU else torch.float32
+        print(f"Using {'GPU' if USE_GPU else 'CPU'} for computation.")
+    
+    print(f"Loading Whisper model: {model_name}...")
+    start_time = time.time()
+    
+    try:
+        model = whisper.load_model(model_name, device='cuda' if USE_GPU else 'cpu')
+        print(f"Model '{model_name}' loaded successfully in {time.time() - start_time:.2f} seconds.")
+        return f"Model '{model_name}' loaded successfully."
+    except Exception as e:
+        error_msg = f"Error loading Whisper model: {e}"
+        print(error_msg)
+        print("Please ensure you have installed whisper and its dependencies correctly.")
+        print("If using GPU, ensure PyTorch is installed with CUDA support.")
+        return error_msg
 
 # Suppress specific warnings if needed (e.g., FP16 on CPU)
 warnings.filterwarnings("ignore", category=UserWarning, message="FP16 is not supported on CPU; using FP32 instead")
+
+# Initialize model at startup
+print("Initializing with default model...")
+load_whisper_model(DEFAULT_MODEL)
 
 # --- Transcription Function ---
 def transcribe_audio(audio_path, language=None):
@@ -131,9 +136,9 @@ def transcribe_audio(audio_path, language=None):
 def create_gradio_interface():
     """Creates and returns the Gradio interface."""
     with gr.Blocks(theme=gr.themes.Soft()) as iface:
-        gr.Markdown(
+        model_info = gr.Markdown(
             f"""
-            # Whisper Speech-to-Text ({MODEL_NAME} model)
+            # Whisper Speech-to-Text
             Upload an audio file (e.g., WAV, MP3, M4A, OGG) **OR** record audio directly from your microphone.
             Click "Transcribe Audio" to get the text transcription using the OpenAI Whisper model.
             *Processing time depends on audio length and server load.*
@@ -142,13 +147,23 @@ def create_gradio_interface():
         )
         with gr.Row():
             with gr.Column(scale=1):
-                # --- MODIFIED gr.Audio ---
+                # Model selection dropdown
+                model_dropdown = gr.Dropdown(
+                    choices=WHISPER_MODELS,
+                    value=DEFAULT_MODEL,
+                    label="Whisper Model",
+                    info="Larger models are more accurate but slower and require more VRAM/RAM."
+                )
+                model_status = gr.Markdown("")
+                
+                # Audio input
                 audio_input = gr.Audio(
                     sources=["upload", "microphone"], # Allow both sources
                     type="filepath",                  # Keep filepath type for both
                     label="Upload Audio File OR Record from Microphone" # Updated label
                 )
-                # --- End Modification ---
+                
+                # Language input
                 lang_input = gr.Textbox(
                     label="Language Code (Optional)",
                     placeholder="e.g., 'en', 'es', 'fr'. Leave blank to auto-detect.",
@@ -164,8 +179,20 @@ def create_gradio_interface():
                     interactive=False # Output field shouldn't be editable by user
                 )
 
+        # Function to update the model when dropdown changes
+        def update_model(model_name):
+            result = load_whisper_model(model_name)
+            return result
+        
+        # Connect the dropdown change event to update the model
+        model_dropdown.change(
+            fn=update_model,
+            inputs=[model_dropdown],
+            outputs=[model_status],
+            api_name="update_model"
+        )
+        
         # Connect the button click event to the transcription function
-        # The function doesn't need to change as type="filepath" provides a path for both
         transcribe_button.click(
             fn=transcribe_audio,
             inputs=[audio_input, lang_input],
@@ -198,6 +225,6 @@ if __name__ == "__main__":
     # share=True creates a public link (useful for sharing temporarily, e.g., via Colab)
     # Be cautious with share=True as it exposes your app publicly.
     # Set server_name="0.0.0.0" to allow access from other devices on your network.
-    app_interface.launch(server_port=7860)
+    app_interface.launch()
     # app_interface.launch(share=True)
     # app_interface.launch() # Launches on 127.0.0.1 (localhost) by default
