@@ -12,7 +12,7 @@ def process_query(audio_path: str, lang = None) -> tuple[str, gr.Dataframe]:
 
     try:
         question = transcribe_audio(audio_path, lang)
-        response, chunks = query_rag(question, get_embedding_function("emrecan/bert-base-turkish-cased-mean-nli-stsb-tr"))
+        response, chunks = query_rag(question, get_embedding_function("atasoglu/roberta-small-turkish-clean-uncased-nli-stsb-tr"))
 
         # Create a DataFrame for display
         df_data = [
