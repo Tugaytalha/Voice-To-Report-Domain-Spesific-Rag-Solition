@@ -6,6 +6,7 @@ import numpy as np
 import whisper
 import torch
 import warnings
+import subprocess
 
 from query_data import QueryData
 from get_embedding_function import get_embedding_function
@@ -23,14 +24,27 @@ EMBEDDING_MODELS = [
     "atasoglu/distilbert-base-turkish-cased-nli-stsb-tr"
 ]
 
-LLM_MODELS = [
-    "llama3.2:3b",
-    "llama3.2:1b",
-    "llama3.1:8b",
-    "llama3.3",
-    "llama3.2-vision",
-    "gemma3"
-]
+def get_ollama_models():
+    try:
+        result = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=True)
+        lines = result.stdout.strip().split('\n')
+        if len(lines) <= 1:
+            raise ValueError("No models found in ollama list output.")
+        model_names = [line.split()[0] for line in lines[1:]]
+        return model_names
+    except (FileNotFoundError, subprocess.CalledProcessError, ValueError) as e:
+        print(f"Could not fetch models from Ollama: {e}. Is Ollama running and the 'ollama' command in your PATH?")
+        print("Falling back to a default list of models.")
+        return [
+            "llama3.2:3b",
+            "llama3.2:1b",
+            "llama3.1:8b",
+            "llama3.3",
+            "llama3.2-vision",
+            "gemma3"
+        ]
+
+LLM_MODELS = get_ollama_models()
 
 QUERY_AUGMENTATION_OPTIONS = [
     "None",
@@ -219,10 +233,10 @@ def populate_db_with_params(reset_db, embedding_model):
 
 
 # Create the Gradio interface with improved styling
-with gr.Blocks(title="EchoScribe AI: Radiology Report Generator", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.themes.Soft()) as demo:
     gr.Markdown(
         """
-        # 🎙️ EchoScribe AI: From Voice to Verbatim Radiology Reports 📝
+        # 🎙️ InsightBridge AI: From Voice to Verbatim Radiology Reports 📝
         
         Speak or type your observations, and let the AI draft a preliminary radiology report based on your knowledge base.
         """
@@ -231,7 +245,7 @@ with gr.Blocks(title="EchoScribe AI: Radiology Report Generator", theme=gr.theme
     with gr.Tab("Query Documents"):
         with gr.Row():
             with gr.Column(scale=2):
-                gr.Markdown("### Voice Query")
+                gr.Markdown("### Radiology Transcription")
                 audio_input = gr.Audio(
                     sources=["upload", "microphone"],
                     type="filepath",
@@ -251,10 +265,11 @@ with gr.Blocks(title="EchoScribe AI: Radiology Report Generator", theme=gr.theme
                 transcribe_button = gr.Button("Transcribe to Text", variant="secondary")
                 
             with gr.Column(scale=2):
-                gr.Markdown("### Text Query")
+                gr.Markdown("### Transcribed Text")
                 query_input = gr.Textbox(
-                    label="Enter your question",
-                    placeholder="Müşterim hangi ATMlerden para çekebilir?",
+                    label="Your Question",
+                    info="The transcribed text from your voice will appear here. You can also type your question manually.",
+                    placeholder="e.g., What are the findings in the patient's chest X-ray?",
                     lines=4
                 )
                 
@@ -272,7 +287,7 @@ with gr.Blocks(title="EchoScribe AI: Radiology Report Generator", theme=gr.theme
                     gr.Markdown("### Model Settings")
                     llm_dropdown = gr.Dropdown(
                         choices=LLM_MODELS,
-                        value=LLM_MODELS[2],
+                        value=LLM_MODELS[0] if LLM_MODELS else None,
                         label="LLM Model",
                         info="Select the large language model for response generation"
                     )
