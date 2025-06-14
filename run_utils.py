@@ -17,6 +17,56 @@ Actual Response: {actual_response}
 """
 
 
+def get_ollama_models():
+    """
+    Fetches the list of available Ollama models.
+
+    It first tries to use the langchain-ollama package. If that fails, it falls
+    back to a direct HTTP request to the Ollama API. If both fail, it returns a
+    default list of models.
+    """
+    # Strategy 1: Using LangChain-Ollama Integration
+    try:
+        # We instantiate with a dummy model name as it's required by the constructor,
+        # but it's not used when listing available models via the internal method.
+        client = OllamaLLM(model="dummy")
+        # _get_models() is an internal method that fetches all model tags.
+        # It returns a list of model names as strings.
+        model_list = client._get_models()
+        if model_list:
+            print("Successfully fetched models via langchain-ollama.")
+            return model_list
+    except Exception as e:
+        print(f"Could not fetch models using langchain-ollama: {e}")
+        print("Falling back to direct HTTP query.")
+
+    # Strategy 2: Direct HTTP Query (Fallback)
+    try:
+        OLLAMA_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+        resp = requests.get(f"{OLLAMA_URL}/api/tags")
+        resp.raise_for_status()
+        data = resp.json()
+        model_names = [model["name"] for model in data.get("models", [])]
+        if model_names:
+            print("Successfully fetched models via direct HTTP query.")
+            return model_names
+        else:
+            print("Direct HTTP query returned no models.")
+    except requests.exceptions.RequestException as e:
+        print(f"Could not fetch models via direct HTTP query: {e}")
+
+    # Fallback to a default list if all methods fail
+    print("Falling back to a default list of models.")
+    return [
+        "llama3.2:3b",
+        "llama3.2:1b",
+        "llama3.1:8b",
+        "llama3.3",
+        "llama3.2-vision",
+        "gemma3"
+    ]
+
+
 def evaluate_response(actual_response, expected_response):
     """
     Evaluates the actual response against the expected response using an LLM.
