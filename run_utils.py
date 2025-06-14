@@ -1,10 +1,13 @@
 from query_data import QueryData
-from populate_database import _main as populate_db, get_all_chunk_embeddings
+from populate_database import _main as populate_db
 import os
 import gradio as gr
 from stt_app import transcribe_audio
 from get_embedding_function import get_embedding_function
-from langchain_ollama import OllamaLLM as Ollama
+from langchain_ollama import OllamaLLM
+from shutil import copy2
+from pathlib import Path
+import requests
 
 EVAL_PROMPT = """
 Expected Response: {expected_response}
@@ -18,7 +21,7 @@ def evaluate_response(actual_response, expected_response):
     """
     Evaluates the actual response against the expected response using an LLM.
     """
-    model = Ollama(model="llama3.2:3b")
+    model = OllamaLLM(model="llama3.2:3b")
     prompt = EVAL_PROMPT.format(
         expected_response=expected_response, actual_response=actual_response
     )
@@ -49,8 +52,7 @@ def process_query(audio_path: str, lang=None, multi_query: bool = False, augment
         return f"Error processing query: {str(e)}", None
 
 
-def populate_database_wrapper(reset: bool = False, model_name: str = "emrecan/bert-base-turkish-cased-mean-nli-stsb-tr",
-                              model_type: str = "sentence-transformer") -> str:
+def populate_db_with_params(reset_db, embedding_model):
     """
     Populates the database with the given model.
 
@@ -60,8 +62,32 @@ def populate_database_wrapper(reset: bool = False, model_name: str = "emrecan/be
     :return: Success message
     """
     try:
-        print("I am using this embedding in utils:", model_name)
-        populate_db(reset=reset, model_name=model_name, model_type=model_type)
-        return "Database populated successfully!"
+        populate_db(
+            reset=reset_db,
+            model_name=embedding_model,
+            model_type="sentence-transformer"
+        )
+        return "✅ Database populated successfully!"
     except Exception as e:
-        return f"Error populating database: {str(e)}"
+        return f"❌ Error: {str(e)}"
+
+
+def handle_file_upload(files, data_path="data"):
+    if not files:
+        return "No files uploaded."
+
+    # Create data directory if it doesn't exist
+    os.makedirs(data_path, exist_ok=True)
+
+    # Copy uploaded files to the data directory
+    file_count = 0
+    for file in files:
+        try:
+            filename = Path(file.name).name
+            destination = os.path.join(data_path, filename)
+            copy2(file.name, destination)
+            file_count += 1
+        except Exception as e:
+            return f"Error copying file {file.name}: {str(e)}"
+
+    return f"✅ Successfully uploaded {file_count} files to the data directory."

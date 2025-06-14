@@ -11,8 +11,8 @@ import subprocess
 from query_data import QueryData
 from get_embedding_function import get_embedding_function
 from visualization_utils import visualize_query_embeddings
-from populate_database import get_all_chunk_embeddings, _main as populate_database_main
-from shutil import copy2
+from populate_database import get_all_chunk_embeddings
+from run_utils import get_ollama_models, handle_file_upload, populate_db_with_params
 
 # Configuration constants
 EMBEDDING_MODELS = [
@@ -23,26 +23,6 @@ EMBEDDING_MODELS = [
     "atasoglu/roberta-small-turkish-clean-uncased-nli-stsb-tr",
     "atasoglu/distilbert-base-turkish-cased-nli-stsb-tr"
 ]
-
-def get_ollama_models():
-    try:
-        result = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=True)
-        lines = result.stdout.strip().split('\n')
-        if len(lines) <= 1:
-            raise ValueError("No models found in ollama list output.")
-        model_names = [line.split()[0] for line in lines[1:]]
-        return model_names
-    except (FileNotFoundError, subprocess.CalledProcessError, ValueError) as e:
-        print(f"Could not fetch models from Ollama: {e}. Is Ollama running and the 'ollama' command in your PATH?")
-        print("Falling back to a default list of models.")
-        return [
-            "llama3.2:3b",
-            "llama3.2:1b",
-            "llama3.1:8b",
-            "llama3.3",
-            "llama3.2-vision",
-            "gemma3"
-        ]
 
 LLM_MODELS = get_ollama_models()
 
@@ -199,39 +179,6 @@ def process_query(
         return f"Error processing query: {str(e)}", None, f"❌ Error: {str(e)}", None
 
 
-def handle_file_upload(files):
-    if not files:
-        return "No files uploaded."
-
-    # Create data directory if it doesn't exist
-    os.makedirs(DATA_PATH, exist_ok=True)
-
-    # Copy uploaded files to the data directory
-    file_count = 0
-    for file in files:
-        try:
-            filename = Path(file.name).name
-            destination = os.path.join(DATA_PATH, filename)
-            copy2(file.name, destination)
-            file_count += 1
-        except Exception as e:
-            return f"Error copying file {file.name}: {str(e)}"
-
-    return f"✅ Successfully uploaded {file_count} files to the data directory."
-
-
-def populate_db_with_params(reset_db, embedding_model):
-    try:
-        populate_database_main(
-            reset=reset_db,
-            model_name=embedding_model,
-            model_type="sentence_transformer"
-        )
-        return "✅ Database populated successfully!"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
-
-
 # Create the Gradio interface with improved styling
 with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.themes.Soft()) as demo:
     gr.Markdown(
@@ -267,13 +214,13 @@ with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.th
             with gr.Column(scale=2):
                 gr.Markdown("### Transcribed Text")
                 query_input = gr.Textbox(
-                    label="Your Question",
-                    info="The transcribed text from your voice will appear here. You can also type your question manually.",
+                    label="Transciption",
+                    info="The transcribed text from your voice will appear here. You can also edit or type your question/transcription manually.",
                     placeholder="e.g., What are the findings in the patient's chest X-ray?",
                     lines=4
                 )
                 
-        status_display = gr.Textbox(label="Status", interactive=False, lines=2)
+                status_display = gr.Textbox(label="Status", interactive=False, lines=2)
         query_button = gr.Button("Submit Query", variant="primary", scale=1)
         
         with gr.Row():
