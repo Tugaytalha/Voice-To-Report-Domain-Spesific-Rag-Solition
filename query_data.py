@@ -151,41 +151,31 @@ class QueryData:
     @staticmethod
     def augment_query(query: str, augmentation: str, model: str = "llama3.2:3b") -> str:
         """
-        Augment the query text with the given augmentation type.
-        :param augmentation: "query" or "response" to augment the query or response, None(default) to not augment
-        Query augmentation is to expand the query to improve searchability and retrieval. Response augmentation is to
-        generate an example answer to the given question for optimizing embedding model systems.
-        :param model: LLM model name to use from ollama.Default is llama3.2:3b
-        :return: Augmented query text
+        Augment the query text with the given augmentation type, tailored for radiology.
+        :param query: The original query from the user (transcription).
+        :param augmentation: "query" for expansion, "answer" for hypothetical document generation.
+        :param model: LLM model name to use from ollama.
+        :return: Augmented query text.
         """
-        if augmentation is None or augmentation.lower() == "none":
+        if not augmentation or augmentation.lower() == "none":
             return query
+
         if augmentation.lower() == "answer":
-            prompt = f"""You are a helpful expert financial research assistant. 
-            Provide an example answer to the given question, that might be found in a document like an annual report. 
-            Write only the answer and do not add any words except the answer.
-            Question: {query}"""
+            prompt = f'''You are an expert radiologist. Based on the following clinical observation, generate a concise, hypothetical finding that might appear in a radiology report.
+        This finding will be used to find similar documents in a knowledge base.
+        Write only the finding and nothing else.
+
+        Clinical Observation: "{query}"
+
+        Hypothetical Finding:'''
         elif augmentation.lower() == "query":
-            prompt = f"""Given a user's query related to banking operations, financial services, compliance, or customer 
-            transactions, generate an expanded version of the query that includes:
-            
-            Synonyms (e.g., "loan" → "credit facility" or "mortgage financing") 
-            Department-specific terminology (e.g., "KYC" → "Know Your Customer compliance process") 
-            Regulatory references (e.g., "AML" → "Anti-Money Laundering regulations as per [jurisdiction]") 
-            Contextual keywords (e.g., if a query is about 'fraud detection, ' include 'transaction monitoring,' '
-            risk assessment,' and 'unauthorized access') 
-            Alternative phrasings that match document language Structured categories where applicable (e.g., linking 
-            "home loan" with "mortgage rates," "loan tenure," and "EMI calculations") 
-            
-            Example Input: "What are the rules for opening a corporate bank account?"
-            
-            Example Expanded Query Output: "Corporate bank account opening guidelines, business banking KYC requirements, 
-            corporate account eligibility criteria, required documentation for corporate accounts, company registration 
-            verification for banking, commercial account opening compliance, business entity bank account regulations."
-            
-            Ensure the expanded query maintains relevance, improves searchability, and aligns with banking documentation 
-            terminology. Also use same language as the query. Write only the augmented query and do not add any words 
-            except the augmented query. Query: {query}"""
+            prompt = f'''You are a medical terminology expert. Expand the following clinical query with relevant radiological terms, synonyms, and alternative phrasings to improve information retrieval from a medical knowledge base.
+        Include anatomical locations, potential findings, and related imaging modalities.
+        Use the same language as the query. Write only the expanded query.
+
+        Original Query: "{query}"
+
+        Expanded Query:'''
         else:
             raise ValueError(f"Invalid augmentation type: {augmentation}")
 
@@ -193,50 +183,41 @@ class QueryData:
 
     @staticmethod
     def generate_multi_query(query: str, model: str = "llama3.2:3b"):
-        prompt = f"""You are an advanced banking knowledge assistant optimizing document retrieval for a 
-                Retrieval-Augmented Generation (RAG) system. A user has entered a query related to banking services, 
-                financial regulations, loans, compliance, legals, or risk management. However, the query may be unclear, broad, or 
-                lacking specificity. Your task is to generate three well-structured queries that cover different but relevant 
-                aspects of the original query to improve retrieval.
-    
-                Instructions:
-    
-                Rephrase the original query while maintaining the intent but targeting different possible document formulations.
-                Expand coverage by incorporating industry-specific terminology, regulatory terms, and relevant variations.
-                Disambiguate vague queries by assuming possible user intents and generating queries to address them.
-                Structure queries effectively to ensure optimal retrieval performance in a banking document database.
-                Example 1:
-                User Query: "What are the rules for opening a corporate bank account?"
-    
-                Generated Multi-Queries:
-    
-                "Corporate bank account opening process and KYC documentation requirements."
-                "Regulatory guidelines for corporate account eligibility and compliance."
-                "Business banking onboarding policies and required financial records."
-                Example 2:
-                User Query: "How does fraud detection work in banking?"
-    
-                Generated Multi-Queries:
-    
-                "Bank fraud detection techniques and transaction monitoring systems."
-                "AML compliance and risk-based fraud detection methods in financial institutions."
-                "Machine learning applications in banking fraud prevention and anomaly detection."
-                Make sure each query is distinct, optimized for search, and relevant for retrieving high-quality banking documents.
-    
-                Ensure the queries maintain relevance, improve searchability, and align with banking documentation terminology.
-                Use the same language as the original query. Write only the three augmented queries and do not add any words 
-                except the augmented queries. Separate each query with a newline. 
-                Provide concise single-topic questions (withouth compounding sentences) that cover various aspects of the topic. 
-                Ensure each question is complete and directly related to the original inquiry. 
-                List each question on a separate line without numbering.
-                Query: {query}"""
+        """
+        Generate multiple specific queries from a single clinical transcription for a RAG system
+        in a radiology context.
+        :param query: The original query from the user (transcription).
+        :param model: LLM model name to use from ollama.
+        :return: A list of generated queries.
+        """
+        prompt = f'''You are an expert radiologist and AI assistant. A doctor has provided a transcription of their observations while looking at a medical image.
+    Your task is to break down this transcription into 3 distinct, specific questions that can be used to query a radiology knowledge base.
+    These questions should focus on identifying key findings, anatomical locations, and potential differential diagnoses mentioned or implied in the text.
+
+    - Each question should be a single, concise sentence.
+    - The questions should cover different aspects of the transcription.
+    - Frame the questions to retrieve detailed descriptions, definitions, or comparison points from a knowledge base.
+    - Ensure the generated questions are in the same language as the original transcription.
+    - List each question on a separate line without any numbering or bullet points.
+
+    Example:
+    Original Transcription: "Patient presents with a persistent cough. Chest X-ray shows a small, ill-defined opacity in the right upper lobe, suspicious for an early-stage malignancy. No signs of pleural effusion or consolidation."
+
+    Generated Queries:
+    What are the characteristics of an ill-defined opacity in the right upper lobe on a chest X-ray?
+    What are the differential diagnoses for a solitary pulmonary nodule?
+    What are the typical radiological signs of early-stage lung malignancy?
+
+    Now, generate the queries for the following transcription:
+    Original Transcription: "{query}"
+
+    Generated Queries:'''
 
         response_text = QueryData.generate_with_llm(prompt, model=model)
-
+        queries = [q.strip() for q in response_text.split("\n") if q.strip()]
         if VERBOSE:
-            print(response_text)
-
-        return response_text.split("\n")
+            print(f"Generated multi-queries: {queries}")
+        return queries
 
 
 if __name__ == "__main__":
