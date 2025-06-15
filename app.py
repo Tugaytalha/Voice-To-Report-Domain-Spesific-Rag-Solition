@@ -36,7 +36,7 @@ DATA_PATH = "data"
 
 # Available Whisper models
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large", "large-v3-turbo"]
-DEFAULT_MODEL = "large-v3-turbo"
+DEFAULT_MODEL = "tiny"
 
 # Global variables
 stt_model = None
