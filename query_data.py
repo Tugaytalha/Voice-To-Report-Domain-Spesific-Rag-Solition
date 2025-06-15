@@ -14,13 +14,30 @@ MODEL_NAME = "qwen3:30b"
 reasoning_model = True if "qwen3" in MODEL_NAME else False
 
 PROMPT_TEMPLATE = """
-Create a radiology report from the doctor's transcript based on the information given in the following context:
+You are an expert AI assistant specializing in generating medical radiology reports. Your task is to convert a raw, unstructured doctor's dictation transcript into a formal, well-structured radiology report in Turkish.
 
+**Instructions:**
+1.  Analyze the provided `{question}`.
+2.  Extract all relevant medical findings, technical details, and patient metadata.
+3.  Structure the information into the following formal sections:
+    *   **Header:** Extract `ACC No`, `Islem No`, `Istem Tarihi`, `Çekim Tarihi`, `Onay Tarihi`. If any are missing, leave them blank.
+    *   **TETKİK ADI:** The name of the examination.
+    *   **TEKNİK:** Describe the imaging technique, parameters, and contrast usage.
+    *   **BULGULAR (FINDINGS):** Detail the objective findings in a systematic order (e.g., posterior fossa, supratentorial, ventricles, bones). This should be a descriptive paragraph.
+    *   **SONUÇ / YORUM (IMPRESSION / CONCLUSION):** Summarize the most critical findings and provide any recommendations. This should be a concise, numbered list.
+4.  The final report must be entirely in **Turkish**.
+5.  Maintain a professional, objective, and clinical tone. Do not add any information not present in the transcript.
+
+---
+**Context from Knowledge Base (if any):**
 {context}
 
 ---
+**Doctor's Dictation Transcript:**
+{question}
 
-Create a radiology report from the doctor's transcript based on the above context: {question}
+---
+**Generated Radiology Report:**
 """ + "\n/nothink" if reasoning_model else ""
 
 
@@ -191,7 +208,7 @@ class QueryData:
         :return: A list of generated queries.
         """
         prompt = f'''You are an expert radiologist and AI assistant. A doctor has provided a transcription of their observations while looking at a medical image.
-    Your task is to break down this transcription into 3 distinct, specific questions that can be used to query a radiology knowledge base.
+    Your task is to break down this transcription into 2-5 distinct, specific questions that can be used to query a radiology knowledge base.
     These questions should focus on identifying key findings, anatomical locations, and potential differential diagnoses mentioned or implied in the text.
 
     - Each question should be a single, concise sentence.
