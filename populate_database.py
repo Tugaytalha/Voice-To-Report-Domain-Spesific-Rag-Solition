@@ -7,6 +7,7 @@ from langchain.schema.document import Document
 from get_embedding_function import get_embedding_function
 from langchain_chroma import Chroma
 from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
+from tqdm.asyncio import tqdm
 
 
 VERBOSE = True
@@ -154,7 +155,7 @@ async def aadd_to_chroma(chunks: list[Document], embedding_func):
         for i in range(0, len(new_chunks), batch_size)
     ]
 
-    await asyncio.gather(*tasks)
+    await tqdm.gather(*tasks, desc="Adding documents to Chroma")
     print("✅ All new documents added successfully.")
 
 
