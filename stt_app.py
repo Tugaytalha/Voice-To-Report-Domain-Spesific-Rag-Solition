@@ -44,8 +44,8 @@ def load_whisper_model(model_name):
 warnings.filterwarnings("ignore", category=UserWarning, message="FP16 is not supported on CPU; using FP32 instead")
 
 # Initialize model at startup
-print("Initializing with default model...")
-load_whisper_model(DEFAULT_MODEL)
+#print("Initializing with default model...")
+#load_whisper_model(DEFAULT_MODEL)
 
 # --- Transcription Function ---
 def transcribe_audio(audio_path, language=None):

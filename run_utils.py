@@ -4,7 +4,7 @@ import os
 import gradio as gr
 from stt_app import transcribe_audio
 from get_embedding_function import get_embedding_function
-from langchain_ollama import OllamaLLM
+from langchain_ollama.llms import OllamaLLM
 from shutil import copy2
 from pathlib import Path
 import requests
@@ -32,7 +32,7 @@ def get_ollama_models():
         client = OllamaLLM(model="dummy")
         # _get_models() is an internal method that fetches all model tags.
         # It returns a list of model names as strings.
-        model_list = client._get_models()
+        model_list = client.list_models()
         if model_list:
             print("Successfully fetched models via langchain-ollama.")
             return model_list
