@@ -34,3 +34,6 @@ torch~=2.6.0+cu126
 flash_attn~=2.7.4.post1
 pandas~=2.2.3
 boto3
+tqdm
+torchaudio
+ultralytics
