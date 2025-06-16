@@ -52,7 +52,9 @@ def run_test_suite():
     print("\n--- Running Test Suite ---")
     os.makedirs(RESULTS_PATH, exist_ok=True)
 
-    audio_files = list(Path(TEST_DATA_PATH).glob("*.mp3"))
+    # Get all .mp3 and wav files in the test directory
+    audio_files = list(Path(TEST_DATA_PATH).glob('**/*.mp3')) + list(Path(TEST_DATA_PATH).glob('**/*.wav'))
+
 
     if not audio_files:
         print(f"⚠️ No .mp3 files found in {TEST_DATA_PATH}. Exiting.")
