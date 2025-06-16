@@ -291,7 +291,7 @@ with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.th
             with gr.Column():
                 gr.Markdown("### Upload Documents")
                 file_upload = gr.File(
-                    file_types=["pdf", "docx", "txt", "csv", "xlsx"],
+                    file_types=[".pdf", ".docx", ".txt", ".csv", ".xlsx"],
                     file_count="multiple",
                     label="Upload Files"
                 )
