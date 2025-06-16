@@ -62,12 +62,12 @@ def main():
 
 class QueryData:
     @staticmethod
-    def generate_with_llm(prompt: str, model: str = "llama3.2:3b"):
+    def generate_with_llm(prompt: str, model: str = "gemma3"):
         """
         Generate text with the given prompt using the LLM model.
 
         :param prompt: Prompt text to generate the text
-        :param model: LLM model name to use from ollama.Default is llama3.2:3b
+        :param model: LLM model name to use from ollama.Default is gemma3
         :return: Generated text
         """
 
@@ -103,14 +103,14 @@ class QueryData:
         return result
 
     @staticmethod
-    def query_rag(query_text: str, embedding_function, model: str = "llama3.2:3b", augmentation: str = None,
+    def query_rag(query_text: str, embedding_function, model: str = "gemma3", augmentation: str = None,
                   multi_query: bool = False):
         """
         Query the RAG system with the given query text and get the response.
 
         :param query_text: Prompt text given by user
         :param embedding_function:  Embedding function itself to use in the vector database
-        :param model: LLM model name to use from ollama.Default is llama3.2:3b
+        :param model: LLM model name to use from ollama.Default is gemma3
         :param augmentation: "query" or "response" to augment the query or response, None(default) to not augment
         :param multi_query: True to generate multiple queries to search in VectorDB, False(default) to generate single query
         . Useful for ambiguous queries or queries that needs retrieval from various documents.
@@ -166,7 +166,7 @@ class QueryData:
         return response_text, chunks_with_metadata
 
     @staticmethod
-    def augment_query(query: str, augmentation: str, model: str = "llama3.2:3b") -> str:
+    def augment_query(query: str, augmentation: str, model: str = "gemma3") -> str:
         """
         Augment the query text with the given augmentation type, tailored for radiology.
         :param query: The original query from the user (transcription).
@@ -199,7 +199,7 @@ class QueryData:
         return QueryData.generate_with_llm(prompt, model=model)
 
     @staticmethod
-    def generate_multi_query(query: str, model: str = "llama3.2:3b"):
+    def generate_multi_query(query: str, model: str = "gemma3"):
         """
         Generate multiple specific queries from a single clinical transcription for a RAG system
         in a radiology context.

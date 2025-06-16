@@ -4,6 +4,7 @@ from pathlib import Path
 import torch
 import whisper
 from tqdm import tqdm
+import gc
 
 from query_data import QueryData
 from get_embedding_function import get_embedding_function
@@ -12,31 +13,18 @@ from get_embedding_function import get_embedding_function
 TEST_DATA_PATH = "test_data/ttspeechs"
 RESULTS_PATH = "test_data/results"
 WHISPER_MODEL = "large-v3-turbo"
-LLM_MODEL = "symptoma/medgemma3:27b"
+LLM_MODEL = "gemma3"
 # Use the same embedding model as your production environment
 EMBEDDING_MODEL = "Omerhan/intfloat-fine-tuned-14376-v4"
 
 # --- Global Variables ---
-stt_model = None
 embedding_function = None
 
-def initialize_models():
-    """Loads and initializes all the necessary models."""
-    global stt_model, embedding_function
+def initialize_embedding_function():
+    """Loads and initializes the embedding model."""
+    global embedding_function
 
-    print("--- Initializing Models ---")
-
-    # Load Whisper model
-    print(f"Loading Whisper model: {WHISPER_MODEL}...")
-    start_time = time.time()
-    try:
-        use_gpu = torch.cuda.is_available()
-        device = 'cuda' if use_gpu else 'cpu'
-        stt_model = whisper.load_model(WHISPER_MODEL, device=device)
-        print(f"✅ Whisper model loaded successfully on {device} in {time.time() - start_time:.2f} seconds.")
-    except Exception as e:
-        print(f"❌ Error loading Whisper model: {e}")
-        exit()
+    print("--- Initializing Embedding Model ---")
 
     # Get embedding function
     print(f"Loading Embedding model: {EMBEDDING_MODEL}...")
@@ -50,26 +38,15 @@ def initialize_models():
         print(f"❌ Error loading embedding function: {e}")
         exit()
 
-    print("--- Model Initialization Complete ---")
+    print("--- Embedding Model Initialization Complete ---")
 
-def transcribe_audio(audio_path: str) -> str:
-    """Transcribes a single audio file to text using the loaded Whisper model."""
-    if not stt_model:
-        print("❌ STT Model not initialized.")
-        return ""
-
-    try:
-        result = stt_model.transcribe(audio_path, fp16=torch.cuda.is_available())
-        return result["text"]
-    except Exception as e:
-        print(f"Error during transcription for {audio_path}: {e}")
-        return ""
 
 def run_test_suite():
     """
     Runs the full test suite:
     1. Finds all .mp3 files in the test directory.
-    2. For each file, transcribes audio and generates a radiology report.
+    2. For each file, it loads whisper, transcribes, unloads whisper,
+       then generates a radiology report.
     3. Saves the report to a markdown file.
     """
     print("\n--- Running Test Suite ---")
@@ -86,27 +63,48 @@ def run_test_suite():
     for audio_path in tqdm(audio_files, desc="Processing audio files"):
         start_time = time.time()
         print(f"\nProcessing: {audio_path.name}")
+        use_gpu = torch.cuda.is_available()
+        device = 'cuda' if use_gpu else 'cpu'
 
-        # 1. Transcribe audio
-        transcription = transcribe_audio(str(audio_path))
-        if not transcription:
-            print(f"Skipping {audio_path.name} due to transcription error.")
-            continue
-        print(f"   Transcription (first 50 chars): {transcription[:50]}...")
+        # 1. Load Whisper Model
+        print(f"   Loading Whisper model ({WHISPER_MODEL}) to {device}...")
+        stt_model = whisper.load_model(WHISPER_MODEL, device=device)
 
-        # 2. Generate Report via RAG
+        # 2. Transcribe audio
+        transcription = ""
         try:
+            print("   Transcribing audio...")
+            result = stt_model.transcribe(str(audio_path), fp16=use_gpu)
+            transcription = result["text"]
+            print(f"   Transcription (first 50 chars): {transcription[:50]}...")
+        except Exception as e:
+            print(f"   ❌ Error during transcription for {audio_path.name}: {e}")
+        finally:
+            # 3. Unload Whisper Model
+            print("   Unloading Whisper model...")
+            del stt_model
+            if use_gpu:
+                torch.cuda.empty_cache()
+            gc.collect()
+            print("   ✅ Whisper model unloaded.")
+
+        if not transcription:
+            print(f"   Skipping {audio_path.name} due to empty or failed transcription.")
+            continue
+
+        # 4. Generate Report via RAG
+        try:
+            print("   Generating report with LLM...")
             response, _ = QueryData.query_rag(
                 query_text=transcription,
                 embedding_function=embedding_function,
                 model=LLM_MODEL,
-                # Using default advanced RAG options for testing
-                augmentation="query",
+                augmentation="None",
                 multi_query=True
             )
-            print(f"   Report generated successfully.")
+            print("   Report generated successfully.")
 
-            # 3. Save the report
+            # 5. Save the report
             report_filename = audio_path.stem + ".md"
             report_filepath = Path(RESULTS_PATH) / report_filename
 
@@ -118,7 +116,7 @@ def run_test_suite():
                 f.write(response)
 
             elapsed_time = time.time() - start_time
-            print(f"   ✅ Saved report to {report_filepath} (took {elapsed_time:.2f}s)")
+            print(f"   ✅ Saved report to {report_filepath} (total time: {elapsed_time:.2f}s)")
 
         except Exception as e:
             print(f"   ❌ Error generating report for {audio_path.name}: {e}")
@@ -127,5 +125,5 @@ def run_test_suite():
 
 
 if __name__ == "__main__":
-    initialize_models()
+    initialize_embedding_function()
     run_test_suite() 
