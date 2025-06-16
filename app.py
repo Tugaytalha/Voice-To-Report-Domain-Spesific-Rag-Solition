@@ -7,6 +7,7 @@ import whisper
 import torch
 import warnings
 import subprocess
+import gc
 
 from query_data import QueryData
 from get_embedding_function import get_embedding_function
@@ -38,71 +39,60 @@ DATA_PATH = "data"
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large", "large-v3-turbo"]
 DEFAULT_MODEL = "tiny"
 
-# Global variables
-stt_model = None
-USE_GPU = False
-compute_dtype = None
-
-# Function to load the Whisper model
-def load_whisper_model(model_name):
-    global stt_model, USE_GPU, compute_dtype
-    
-    # Check for GPU availability
-    if USE_GPU is False:  # Only check once
-        print("Checking for GPU...")
-        USE_GPU = torch.cuda.is_available()
-        compute_dtype = torch.float16 if USE_GPU else torch.float32
-        print(f"Using {'GPU' if USE_GPU else 'CPU'} for computation.")
-    
-    print(f"Loading Whisper model: {model_name}...")
-    start_time = time.time()
-    
-    try:
-        stt_model = whisper.load_model(model_name, device='cuda' if USE_GPU else 'cpu')
-        print(f"Model '{model_name}' loaded successfully in {time.time() - start_time:.2f} seconds.")
-        return f"Model '{model_name}' loaded successfully."
-    except Exception as e:
-        error_msg = f"Error loading Whisper model: {e}"
-        print(error_msg)
-        print("Please ensure you have installed whisper and its dependencies correctly.")
-        print("If using GPU, ensure PyTorch is installed with CUDA support.")
-        return error_msg
-
 # Suppress specific warnings if needed (e.g., FP16 on CPU)
 warnings.filterwarnings("ignore", category=UserWarning, message="FP16 is not supported on CPU; using FP32 instead")
 
-# Initialize model at startup
-print("Initializing with default model...")
-load_whisper_model(DEFAULT_MODEL)
-
-# Function to transcribe audio to text
-def transcribe_audio(audio_path, language=None):
+# Function to transcribe audio to text, now with model loading/unloading
+def transcribe_audio(audio_path, model_name, language=None):
+    """
+    Loads a Whisper model, transcribes the audio, and then unloads the model.
+    """
     if audio_path is None:
-        # Return a tuple of empty strings for both outputs
         return "Error: No audio provided.", ""
 
     if not os.path.exists(audio_path):
-        time.sleep(0.1)
+        time.sleep(0.1) # A small delay to allow file system to catch up
         if not os.path.exists(audio_path):
-            # Return a tuple of empty strings for both outputs
             return f"Error: Audio file not found at path: {audio_path}", ""
 
+    stt_model = None
     try:
-        options = {"fp16": USE_GPU, "language": language if language else None}
+        # Check for GPU availability
+        print("Checking for GPU...")
+        use_gpu = torch.cuda.is_available()
+        device = 'cuda' if use_gpu else 'cpu'
+        print(f"Using {device} for computation.")
+
+        # Load Whisper model
+        print(f"Loading Whisper model: {model_name}...")
+        start_time = time.time()
+        stt_model = whisper.load_model(model_name, device=device)
+        print(f"Model '{model_name}' loaded successfully in {time.time() - start_time:.2f} seconds.")
+
+        # Transcribe
+        options = {"fp16": use_gpu, "language": language if language else None}
         options = {k: v for k, v in options.items() if v is not None and v != ""}
         result = stt_model.transcribe(audio_path, **options)
-        # Return a tuple: (status, transcribed_text)
+
         return f"Transcription successful. Detected language: {result['language']}", result["text"]
+
     except Exception as e:
-        # Return a tuple of error message and empty string
         return f"Error during transcription: {str(e)}", ""
     finally:
+        # Unload model and clear memory
+        if stt_model is not None:
+            print("Unloading Whisper model...")
+            del stt_model
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
+            print("Whisper model unloaded.")
+
         if audio_path is not None and os.path.exists(audio_path) and "gradio" in audio_path:
             try:
                 os.remove(audio_path)
             except OSError as e:
                 print(f"Warning: Could not clean up temporary file {audio_path}: {e}")
-
 
 def process_query(
         question: str,
@@ -292,14 +282,8 @@ with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.th
 
         transcribe_button.click(
             fn=transcribe_audio,
-            inputs=[audio_input, lang_input],
+            inputs=[audio_input, whisper_model_dropdown, lang_input],
             outputs=[status_display, query_input]
-        )
-        
-        whisper_model_dropdown.change(
-            fn=load_whisper_model,
-            inputs=[whisper_model_dropdown],
-            outputs=[status_display]
         )
 
     with gr.Tab("Document Management"):
