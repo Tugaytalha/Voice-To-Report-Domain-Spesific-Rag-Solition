@@ -21,3 +21,4 @@ visualizations
 .env
 sa.ipynb
 /updated_rag
+*.ini

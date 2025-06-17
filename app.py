@@ -16,6 +16,7 @@ from populate_database import get_all_chunk_embeddings
 from run_utils import get_ollama_models, handle_file_upload, populate_db_with_params
 
 # Configuration constants
+REPORTS_PATH = "generated_reports"
 EMBEDDING_MODELS = [
     "jinaai/jina-embeddings-v3",
     "Omerhan/intfloat-fine-tuned-14376-v4",
@@ -100,12 +101,13 @@ def process_query(
         llm_model: str,
         use_multi_query: bool,
         query_augmentation: str
-) -> tuple[str, gr.Dataframe, str, str]:
+) -> tuple[str, gr.Dataframe, str, str, str]:
     if not os.path.exists("chroma"):
-        return "Error: Database not found. Please populate the database first.", None, "❌ Database not found", None
+        return "Error: Database not found. Please populate the database first.", None, "❌ Database not found", None, None
 
     start_time = time.time()
     status_msg = "🔍 Processing query..."
+    report_filepath = None
 
     try:
         # Get the embedding function
@@ -160,13 +162,31 @@ def process_query(
         sources = ", ".join(set([chunk['source'] for chunk in chunks]))
         elapsed_time = time.time() - start_time
         status_msg = f"✅ Query processed in {elapsed_time:.2f} seconds | Sources: {sources}"
+        
+        # Create markdown content for download
+        md_content = f"# Radiology Report\n\n"
+        md_content += f"## Query/Transcription\n\n"
+        md_content += f"```\n{question}\n```\n\n"
+        md_content += f"## AI-Generated Report\n\n"
+        md_content += f"{response}\n\n"
+        md_content += f"## Retrieved Sources\n\n"
+        md_content += f"`{sources}`\n"
+        
+        # Save to a file
+        os.makedirs(REPORTS_PATH, exist_ok=True)
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        report_filename = f"report_{timestamp}.md"
+        report_filepath = os.path.join(REPORTS_PATH, report_filename)
+
+        with open(report_filepath, "w", encoding="utf-8") as f:
+            f.write(md_content)
 
         return response, gr.Dataframe(
             headers=['Source', 'Content', 'Relevance Score'],
             value=df_data
-        ), status_msg, visualization_path
+        ), status_msg, visualization_path, report_filepath
     except Exception as e:
-        return f"Error processing query: {str(e)}", None, f"❌ Error: {str(e)}", None
+        return f"Error processing query: {str(e)}", None, f"❌ Error: {str(e)}", None, None
 
 
 # Create the Gradio interface with improved styling
@@ -217,6 +237,7 @@ with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.th
             with gr.Column(scale=2):
                 gr.Markdown("### Response")
                 output = gr.Textbox(label="AI Response", lines=5)
+                download_button = gr.File(label="Download Report", interactive=False)
 
         with gr.Row():
             with gr.Column(scale=1):
@@ -277,7 +298,7 @@ with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.th
                 multi_query_checkbox,
                 query_augmentation_dropdown
             ],
-            outputs=[output, chunks_output, status_display, viz_output]
+            outputs=[output, chunks_output, status_display, viz_output, download_button]
         )
 
         transcribe_button.click(
