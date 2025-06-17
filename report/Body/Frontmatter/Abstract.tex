@@ -1,0 +1,15 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+%% Edit below this line
+The process of creating structured radiology reports from unstructured physician dictations is a critical, time-consuming, and error-prone task in modern healthcare. This project, "InsightBridge," presents a novel system designed to automate and streamline this workflow. It leverages a combination of advanced Speech-to-Text (STT) and Retrieval-Augmented Generation (RAG) technologies to convert a radiologist's spoken dictation directly into a formal, structured clinical report.
+
+The system's pipeline begins with a high-fidelity STT module, powered by OpenAI's Whisper model, which is optimized for capturing the complex terminology inherent in medical dictations. The transcribed text is then processed by the core of the system: a purpose-built RAG engine. Unlike conventional Q\&A systems, this engine does not answer questions, but instead performs a sophisticated analysis of the unstructured transcript. It identifies key clinical findings, anatomical references, and measurements. This information is then used to retrieve relevant templates, standardized radiological phrases, and contextual data from a specialized knowledge base built in ChromaDB.
+
+The retrieved information, along with the analyzed transcript, is fed into a Large Language Model (LLM), Llama 3.1, which is prompted to generate a complete, structured radiology report. The report is organized into standard clinical sections, such as "Findings" and "Impression." The entire process is managed through a user-friendly Gradio web interface, which allows radiologists to dictate, review, edit, and finalize the generated report, significantly reducing manual effort and turnaround time. This work demonstrates a practical and powerful application of AI in a clinical setting, offering a robust solution to a significant bottleneck in the radiology workflow and paving the way for more efficient and accurate medical documentation.
+
+%% Until here
+\vfill
+%% Edit after {Keywords:}
+\textbf{Keywords:} Radiology Report Generation, Speech-to-Text (STT), Retrieval-Augmented Generation (RAG), Natural Language Processing (NLP), Medical Informatics, Clinical Automation, Large Language Models (LLM).
+\clearpage

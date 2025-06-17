@@ -1,0 +1,15 @@
+\chapter*{Özet}
+\addcontentsline{toc}{chapter}{Özet}
+
+%% Edit below this line
+Yapılandırılmamış hekim diktasyonlarından yapılandırılmış radyoloji raporları oluşturma süreci, modern sağlık hizmetlerinde kritik, zaman alıcı ve hataya açık bir görevdir. "InsightBridge" adlı bu proje, bu iş akışını otomatikleştirmek ve modernize etmek için tasarlanmış yeni bir sistem sunmaktadır. Bu sistem, bir radyoloğun sözlü diktesini doğrudan resmi ve yapılandırılmış bir klinik rapora dönüştürmek için gelişmiş Konuşma-Metin (STT) ve Geri-Getirme Artırımlı Üretim (RAG) teknolojilerinin bir kombinasyonundan yararlanır.
+
+Sistemin işlem hattı, medikal diktasyonlarda bulunan karmaşık terminolojiyi yakalamak için optimize edilmiş, OpenAI'nin Whisper modeli tarafından desteklenen yüksek hassasiyetli bir STT modülü ile başlar. Metne dönüştürülmüş metin daha sonra sistemin çekirdeği olan amaca yönelik bir RAG motoru tarafından işlenir. Geleneksel Soru-Cevap sistemlerinden farklı olarak, bu motor soruları yanıtlamaz; bunun yerine, yapılandırılmamış transkriptin gelişmiş bir analizini gerçekleştirir. Anahtar klinik bulguları, anatomik referansları ve ölçümleri tanımlar. Bu bilgi daha sonra ChromaDB'de oluşturulmuş özel bir bilgi tabanından ilgili şablonları, standartlaştırılmış radyolojik ifadeleri ve bağlamsal verileri almak için kullanılır.
+
+Elde edilen bilgiler, analiz edilen transkript ile birlikte, Llama 3.1 adlı bir Büyük Dil Modeli'ne (LLM) beslenir ve bu modelden "Bulgular" ve "Sonuç" gibi standart klinik bölümlere ayrılmış eksiksiz, yapılandırılmış bir radyoloji raporu oluşturması istenir. Tüm süreç, radyologların oluşturulan raporu dikte etmesine, incelemesine, düzenlemesine ve son haline getirmesine olanak tanıyan, böylece manuel çabayı ve işlem süresini önemli ölçüde azaltan kullanıcı dostu bir Gradio web arayüzü aracılığıyla yönetilir. Bu çalışma, radyoloji iş akışındaki önemli bir darboğaza sağlam bir çözüm sunarak ve daha verimli ve doğru tıbbi dokümantasyonun önünü açarak, yapay zekanın klinik ortamda pratik ve güçlü bir uygulamasını göstermektedir.
+
+%% Until here
+\vfill
+%% Edit after {Anahtar Kelimeler:}
+\textbf{Anahtar Kelimeler:} Radyoloji Raporu Üretimi, Konuşmadan Metne (STT), Geri-Getirme Artırımlı Üretim (RAG), Doğal Dil İşleme (NLP), Tıbbi Bilişim, Klinik Otomasyon, Büyük Dil Modelleri (LLM).
+\clearpage

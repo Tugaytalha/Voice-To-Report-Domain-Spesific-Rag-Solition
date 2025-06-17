@@ -1,0 +1,53 @@
+\chapter{System Architecture and Design}
+\label{cha:architecture}
+
+\section{Overview of the Voice-to-Report Pipeline}
+
+The InsightBridge system is architected as an end-to-end pipeline that transforms a radiologist's unstructured voice dictation into a structured, clinically sound report. The design philosophy is centered on a modular workflow that mirrors and automates the traditional reporting process. The architecture is not a simple query-and-response mechanism; rather, it is a sophisticated generation system grounded in a specialized medical knowledge base.
+
+The pipeline is divided into two conceptual phases: the **Knowledge Base Curation Phase** (a one-time, offline process) and the **Automated Reporting Phase** (the online, real-time workflow). The interaction between these phases is illustrated in Figure \ref{fig:radiology_architecture}.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=1.0\textwidth]{Imgs/radiology-architecture.png}
+    \caption{The Voice-to-Report system architecture, showing the knowledge base curation and the real-time automated reporting pipeline.}
+    \label{fig:radiology_architecture}
+\end{figure}
+
+\subsection{Knowledge Base Curation Phase}
+The foundation of the system's accuracy and consistency is its specialized knowledge base. This is not a collection of general documents, but a curated repository of domain-specific information essential for generating high-quality radiology reports. This phase, handled by the `populate_database.py` script, involves:
+\begin{enumerate}
+    \item \textbf{Data Sourcing:} Loading institutional report templates, examples of "gold-standard" reports, and structured radiological lexicons (e.g., RadLex terms and descriptions).
+    \item \textbf{Content Chunking:} Deconstructing these documents into meaningful, reusable components. For example, a template is broken down into its constituent sections, and example reports are split into standardized phrases corresponding to specific findings.
+    \item \textbf{Semantic Embedding:} Each chunk is converted into a vector embedding using a fine-tuned Sentence Transformer model. This captures the clinical and semantic meaning of the phrase or template section.
+    \item \textbf{Vector Store Population:} The embeddings and their corresponding text are loaded into the ChromaDB vector database, creating a searchable library of report components.
+\end{enumerate}
+
+\subsection{Automated Reporting Phase}
+This is the real-time workflow initiated when the radiologist begins a dictation. It is a multi-stage process orchestrated by `app.py` and its utility functions.
+\begin{enumerate}
+    \item \textbf{Voice Capture and Transcription:} The radiologist uses a microphone in the Gradio UI. The audio stream is captured and transcribed into text in real-time by the Whisper STT module.
+    \item \textbf{Clinical Entity Analysis:} The raw transcript is analyzed to identify and extract key clinical entities. This goes beyond simple keywords and involves recognizing anatomical locations, pathological findings (e.g., "5mm nodule in the left upper lobe"), measurements, and clinical context.
+    \item \textbf{Retrieval of Report Components:} The extracted entities are used to query the ChromaDB knowledge base. The system retrieves the most relevant components, such as:
+        \begin{itemize}
+            \item The appropriate report template (e.g., "CT Chest Report").
+            \item Standardized descriptive phrases for the identified findings (e.g., a standard sentence for describing a pulmonary nodule).
+        \end{itemize}
+    \item \textbf{Augmented Prompting for Generation:} A sophisticated prompt is constructed for the LLM. This prompt includes the raw transcript, the extracted clinical entities, the retrieved report template, and the standardized phrases.
+    \item \textbf{Structured Report Generation:} The LLM (Llama 3.1) processes this rich prompt and generates a full, structured report. It intelligently places the information from the dictation into the correct sections of the template, using the retrieved phrases to ensure conformity and clarity.
+    \item \textbf{UI for Review and Finalization:} The generated report is immediately displayed in the Gradio interface. The radiologist can then quickly review the document, make any necessary edits, and finalize it, completing the reporting process.
+\end{enumerate}
+
+\section{Component Deep-Dive}
+
+\subsection{Clinical User Interface (Gradio)}
+The interface is designed for clinical efficiency. It provides a simple, clean workspace for dictation and a side-by-side view of the generated report. Editing is done in a rich text box, allowing for easy corrections and additions before the report is exported or sent to a Picture Archiving and Communication System (PACS).
+
+\subsection{Medical Speech-to-Text (Whisper)}
+The STT module uses an optimized Whisper model to provide fast and accurate transcriptions. Crucially, it is fine-tuned or prompted to be sensitive to medical vocabulary, differentiating between similar-sounding terms and correctly formatting measurements and acronyms common in radiology.
+
+\subsection{Knowledge Base and Embeddings (ChromaDB \& Sentence Transformers)}
+The choice of ChromaDB allows for a lightweight, local, and fast vector store. The embedding models are chosen from the Sentence Transformers library and are potentially fine-tuned on a corpus of radiology reports to better understand the specific semantics of the domain, ensuring that a dictated phrase like "opacity in the lung base" retrieves the most clinically appropriate standard descriptions.
+
+\subsection{The Generation Engine (Ollama and LangChain)}
+The core of the report generation is the LLM, run locally via Ollama for data privacy and security. The logic is managed by LangChain, which constructs the complex prompt and chains together the steps of analysis, retrieval, and generation. The prompt engineering is critical; it instructs the LLM to act as a medical scribe, adhering strictly to the provided context and template, thereby ensuring the clinical validity and structural integrity of the final report.

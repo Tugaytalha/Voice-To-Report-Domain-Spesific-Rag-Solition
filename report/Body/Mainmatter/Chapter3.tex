@@ -1,0 +1,86 @@
+\chapter{Implementation Details}
+\label{cha:implementation}
+
+This chapter delves into the technical execution of the InsightBridge system, detailing how the architectural concepts are realized in Python code. The implementation leverages a suite of specialized libraries to create a pipeline that is both powerful and adaptable to the nuances of the clinical radiology environment.
+
+\section{Core Scripts and Their Clinical Roles}
+
+\subsection{\texttt{populate\_database.py}: Curating the Clinical Knowledge Base}
+This script's role is not just to ingest documents, but to build the domain-specific knowledge base that underpins the entire system.
+\begin{itemize}
+    \item \textbf{Data Sourcing:} Instead of generic PDFs, the script is designed to load curated documents essential for radiology reporting. This includes structured `.docx` or `.txt` files containing report templates, standardized phrases, and approved terminology lists. The `PyMuPDFLoader` is used, but the true value lies in the curated source data.
+    \item \textbf{Chunking for Clinical Relevance:} The `RecursiveCharacterTextSplitter` is configured with parameters (`chunk\_size=1000`, `chunk\_overlap=100`) to create semantically meaningful chunks. For a report template, a "chunk" might be a whole section like "FINDINGS:". For a list of standardized phrases, each phrase is a chunk. This ensures that retrieval operations return complete, usable units of information.
+    \item \textbf{Domain-Aware Embeddings:} The script calls `get\_embedding\_function` to load a Sentence Transformer model (e.g., `emrecan/bert-base-turkish-cased-mean-nli-stsb-tr`). For optimal performance in a clinical setting, this model would ideally be a bio-medical variant or fine-tuned on a corpus of radiology texts to better grasp the semantic relationships between clinical terms.
+    \item \textbf{Database Population:} The script populates the ChromaDB instance, creating a vector representation of the clinical knowledge base, ready for rapid semantic retrieval.
+\end{itemize}
+
+\subsection{\texttt{query\_data.py}: The Report Generation Engine}
+This script is fundamentally a report generation module, not a Q\&A module. The term "query" here refers to the internal process of building and executing the generation pipeline based on the dictation.
+\begin{itemize}
+    \item \textbf{Clinical Prompt Engineering:} This is an important part of the implementation. The `ChatPromptTemplate` is engineered to guide the LLM's generation process with high precision. The prompt is structured to mimic how a junior resident might be instructed by a senior radiologist:
+    \begin{verbatim}
+You are an expert AI assistant specializing in generating medical radiology reports. Your task is to convert a raw, unstructured doctor's dictation transcript into a formal, well-structured radiology report in Turkish.
+
+**Instructions:**
+1.  Analyze the provided `{question}`.
+2.  Extract all relevant medical findings, technical details, and patient metadata.
+3.  Structure the information into the following formal sections:
+    *   Header: Extract `ACC No`, `Islem No`, `Istem Tarihi`, `Çekim Tarihi`, `Onay Tarihi`. If any are missing, leave them blank.
+    *   TETKİK ADI: The name of the examination.
+    *   TEKNİK: Describe the imaging technique, parameters, and contrast usage.
+    *   BULGULAR (FINDINGS): Detail the objective findings in a systematic order (e.g., posterior fossa, supratentorial, ventricles, bones). This should be a descriptive paragraph.
+    *   SONUÇ / YORUM (IMPRESSION / CONCLUSION): Summarize the most critical findings and provide any recommendations. This should be a concise, numbered list.
+4.  The final report must be entirely in **Turkish**.
+5.  Maintain a professional, objective, and clinical tone. Do not add any information not present in the transcript.
+
+---
+**Context from Knowledge Base (if any):**
+{context}
+
+---
+**Doctor's Dictation Transcript:**
+{question}
+
+---
+**Generated Radiology Report:**
+    \end{verbatim}
+    \item \textbf{Specialized RAG Chain and Advanced Retrieval Strategies:} The LangChain Expression Language (LCEL) is used to construct a chain that is more complex than a standard Q\&A RAG. To enhance the quality and relevance of the retrieved context, the system implements several advanced strategies defined in \texttt{query\_data.py}:
+        \begin{itemize}
+            \item \textbf{Multi-Query Generation:} A single clinical dictation can be long and cover multiple distinct topics or findings. Instead of performing a single semantic search with the entire transcript, the system can be configured to use an LLM to first decompose the transcript into several focused, atomic questions. For example, a dictation describing findings in both the lungs and the liver would be broken into separate queries for each anatomical region. The \texttt{generate\_multi\_query} function orchestrates this by prompting an LLM to act as a radiology expert and identify the key distinct topics within the dictation. The system then executes a search for each sub-query, aggregates the results, and removes duplicates, providing a richer and more comprehensive context to the final generation model.
+            \item \textbf{Query Augmentation:} The system also includes two methods for augmenting the query itself to improve retrieval accuracy. The \texttt{augment\_query} function can be used in one of two modes:
+                \begin{itemize}
+                    \item \textbf{Hypothetical Document Generation:} In this mode (`augmentation="answer"`), the system uses an LLM to generate a short, idealized, hypothetical "answer" or report snippet that it expects to find. This well-structured, hypothetical document is often more effective for semantic search than the original, potentially colloquial, dictation transcript.
+                    \item \textbf{Query Expansion:} In this mode (`augmentation="query"`), the system prompts an LLM to expand the original query with relevant medical synonyms, alternative phrasings, and related terms. This broadened query is more likely to match relevant information in the knowledge base that may be phrased differently from the original dictation.
+                \end{itemize}
+        \end{itemize}
+        These configurable retrieval strategies allow the system to handle complex or ambiguous dictations more effectively, ensuring the final generation step is grounded in the most relevant possible context.
+    \item \textbf{LLM for Clinical Generation:} The `Ollama(model="Medgemma3")` instance is used as the generator. Its task is not to answer a question, but to perform a complex information synthesis and structuring task based on the detailed prompt.
+\end{itemize}
+
+\subsection{\texttt{run\_utils.py}: Orchestrating the Clinical Workflow}
+This script is the bridge between the UI and the backend, managing the state of the report generation process.
+\begin{itemize}
+    \item \textbf{\texttt{process\_dictation}:} This core function orchestrates the entire reporting phase. It takes the audio from Gradio, sends it to `transcribe\_audio`, and then performs the crucial analysis on the returned transcript.
+    \item \textbf{Clinical Entity Extraction and Retrieval Logic:} A key implementation detail within this script is the logic for extracting actionable entities from the transcript before retrieval. Rather than using the whole transcript, the script performs a lightweight analysis to identify key terms that are most likely to yield relevant results from the knowledge base. This includes:
+        \begin{itemize}
+            \item **Pattern Matching:** Using regular expressions to find accession numbers, patient IDs, or other structured data mentioned by the radiologist.
+            \item **Keyword Identification:** Searching the transcript for keywords related to modality ("CT", "MR"), anatomy ("Chest", "Knee"), or findings ("nodule", "fracture").
+            \item **Multi-Step Retrieval:** The extracted entities guide a multi-step retrieval process. First, a query is performed to find the most appropriate overall report template. Then, subsequent queries are performed using keywords from the findings to pull in relevant standardized descriptive phrases. This enriched context is what gets passed to the prompt.
+        \end{itemize}
+\end{itemize}
+
+\subsection{\texttt{app.py}: The Radiologist's Workbench}
+The Gradio application is implemented to serve as a simple but effective clinical workbench.
+\begin{itemize}
+    \item \textbf{UI for Efficiency:} The interface is deliberately minimalist. It features a large "Record" button, a waveform visualizer to show that dictation is active, and a large text area where the generated report appears. The focus is on minimizing clicks and distractions.
+    \item \textbf{Event-Driven Workflow:} The application is event-driven. Hitting "Record" starts the audio capture. Hitting "Stop" triggers the entire `process\_dictation` workflow, culminating in the population of the report text area. Buttons for "Copy Report" or "Clear" provide final workflow actions.
+\end{itemize}
+
+\section{Key Libraries and Their Clinical Application}
+\begin{itemize}
+    \item \textbf{LangChain:} Used to build the custom, multi-retrieval RAG chain and to structure the highly specific prompts needed for clinical report generation.
+    \item \textbf{ChromaDB:} Serves as the local, fast, and secure knowledge base for storing sensitive report templates and standardized clinical phrases.
+    \item \textbf{Gradio:} Provides the rapid application development framework for the clinical front-end, enabling the creation of a simple dictation and review interface.
+    \item \textbf{Ollama:} Ensures that the powerful LLM used for generation can run entirely locally on a radiologist's workstation, which is a critical requirement for handling patient data securely.
+    \item \textbf{Whisper-Turbo:} Provides the high-speed, high-accuracy STT engine, which is the entry point for the entire clinical workflow.
+\end{itemize}

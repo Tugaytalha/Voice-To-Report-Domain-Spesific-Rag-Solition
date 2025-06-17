@@ -1,0 +1,40 @@
+\chapter{Conclusion and Future Work}
+\label{cha:conclusion}
+
+\section{Conclusion}
+
+This project, InsightBridge, has successfully developed and demonstrated a novel voice-to-report system that directly addresses a significant point of friction in the clinical radiology workflow. By creating an automated pipeline to transform unstructured, spoken dictations into structured, formal reports, this work represents a significant step forward in the application of AI to medical documentation. The system effectively reduces the manual burden on radiologists, improves report consistency, and has the potential to decrease diagnostic turnaround times.
+
+The key contribution of this project is the design of a specialized Retrieval-Augmented Generation (RAG) pipeline, purpose-built for report generation rather than general question-answering. We have shown that by curating a domain-specific knowledge base of clinical templates and standardized phrases, and by using a multi-step retrieval process, it is possible to guide a Large Language Model to produce output that is not only fluent but also clinically and structurally sound. The integration of a high-accuracy STT module and a minimalist, workflow-centric Gradio UI results in a tool with clear potential for practical clinical use.
+
+The successful implementation of InsightBridge, leveraging locally-run, open-source models like Llama 3.1 and Whisper, also underscores the feasibility of developing powerful, secure, and privacy-preserving AI tools for healthcare. It serves as a robust proof-of-concept for how modern AI techniques can be tailored to solve specific, high-impact problems within the medical field, moving beyond generic applications to create tools that are genuinely useful and aligned with the needs of clinicians.
+
+\section{Future Work and Clinical Integration}
+
+While InsightBridge is a successful prototype, its journey towards becoming a production-ready clinical tool involves several key avenues for future development.
+
+\begin{itemize}
+    \item \textbf{Clinical Safety and Robustness:} The highest priority for any clinical tool is safety. Future work must involve rigorous testing on a large, diverse set of real-world dictations. This includes developing "red-teaming" strategies to identify edge cases where the model might generate clinically significant errors (e.g., misinterpreting negatives, dropping critical findings).
+    
+    \item \textbf{Integration with Hospital Information Systems (HIS):} For true clinical utility, the system must integrate with existing hospital infrastructure. This involves:
+        \begin{itemize}
+            \item \textbf{PACS/RIS Integration:} Building interfaces to connect with Picture Archiving and Communication Systems (PACS) and Radiology Information Systems (RIS). This would allow the system to automatically fetch patient metadata and worklists, and to push the finalized report back into the patient's record.
+            \item \textbf{HL7/FHIR Compliance:} Ensuring the output format is compliant with healthcare interoperability standards like HL7 or FHIR for seamless data exchange.
+        \end{itemize}
+
+    \item \textbf{Advanced Clinical NLP:} The current entity extraction can be made more sophisticated.
+        \begin{itemize}
+            \item \textbf{Named Entity Recognition (NER) and Relation Extraction:} Implementing a dedicated, fine-tuned NER model to more reliably extract entities like anatomical locations, findings, and their relationships (e.g., linking a measurement to a specific nodule).
+            \item \textbf{Negation and Uncertainty Detection:} Training models to specifically understand and correctly represent statements of negation ("no evidence of...") and uncertainty ("...is suspected"), which are critical for clinical accuracy.
+        \end{itemize}
+
+    \item \textbf{Model Fine-Tuning and Specialization:}
+        \begin{itemize}
+            \item \textbf{Domain-Specific LLM Tuning:} Fine-tuning the generator LLM on a large corpus of existing radiology reports could significantly improve its ability to adopt the specific tone, style, and vocabulary of a given institution or sub-specialty.
+            \item \textbf{Multi-Modal Capabilities:} Extending the model to accept not only the dictation but also the medical image itself as input, moving towards a truly multi-modal diagnostic assistant.
+        \end{itemize}
+        
+    \item \textbf{Human Factors and UI/UX Refinement:} Conducting formal usability studies with radiologists to gather feedback and further refine the user interface. The goal is to create a tool that is not just functional, but which genuinely enhances and accelerates the radiologist's natural workflow without adding cognitive load.
+\end{itemize}
+
+By focusing on these areas, InsightBridge can evolve from a powerful prototype into a transformative clinical tool that improves the efficiency, quality, and consistency of radiological reporting. 
