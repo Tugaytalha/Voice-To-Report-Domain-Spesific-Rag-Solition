@@ -23,3 +23,5 @@ sa.ipynb
 /updated_rag
 *.ini
 /generated_reports
+*.zip
+report/report.zip
