@@ -29,7 +29,7 @@
 \setlength{\skip\footins}{18.0pt plus 0.0pt minus 0.0pt}
 
 % Core packages and settings
-\usepackage[colorlinks=false]{hyperref}
+\usepackage[colorlinks=false, urlcolor=blue]{hyperref}
 \usepackage{amsmath}
 
 \usepackage{titlesec} %setting the titles of chapters and sections
@@ -55,9 +55,9 @@
 \fancyhf{}
 \fancyfoot[C]{\fontsize{11pt}{11pt}\thepage}
 
-\usepackage[style=ieee]{biblatex}
-\addbibresource{refs.bib}
-\usepackage{csquotes}% Needed for babel(in biblatex)
+% \usepackage[style=ieee]{biblatex}
+% \addbibresource{refs.bib}
+% \usepackage{csquotes}% Needed for babel(in biblatex)
 
 \usepackage[bottom, perpage]{footmisc}%% amkes footnotes at the bottom
 
@@ -131,8 +131,10 @@
 \begin{outertitles}
 \clearpage
 \setlength{\emergencystretch}{1em}
-\printbibliography[heading=bibintoc,title={References}]
+% \printbibliography[heading=bibintoc,title={References}]
+\input{./Body/Backmatter/References}
 \addtocontents{toc}{\protect\vspace{18pt}}
+\addcontentsline{toc}{chapter}{References}
 %% If you don't want a CV or appendices add a % at the beginning of the relevant line
 \input{./Body/Backmatter/Appendices}
 \input{./Body/Backmatter/CV}
