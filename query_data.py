@@ -61,6 +61,14 @@ def main():
 
 
 class QueryData:
+    model = None
+    
+    @staticmethod
+    def init_model(model_name: str):
+        """Initialize the Ollama model"""
+        if QueryData.model is None:
+            QueryData.model = Ollama(model=model_name, num_ctx=64000, temperature=0.0, verbose=True)
+        
     @staticmethod
     def generate_with_llm(prompt: str, model: str = "gemma3"):
         """
@@ -70,9 +78,8 @@ class QueryData:
         :param model: LLM model name to use from ollama.Default is gemma3
         :return: Generated text
         """
-
-        model = Ollama(model=model)
-        response_text = model.invoke(prompt)
+        QueryData.init_model(model)
+        response_text = QueryData.model.invoke(prompt)
 
         if VERBOSE:
             print(response_text)
