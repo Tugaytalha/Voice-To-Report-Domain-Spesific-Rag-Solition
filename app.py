@@ -350,4 +350,4 @@ with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.th
 
 # Launch the Gradio app
 if __name__ == "__main__":
-    demo.launch(debug=True)
+    demo.launch(debug=True, share=True)
