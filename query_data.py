@@ -10,7 +10,7 @@ CHROMA_PATH = "chroma"
 
 VERBOSE = False
 
-MODEL_NAME = "qwen3:30b"
+MODEL_NAME = "gemma3"
 reasoning_model = True if "qwen3" in MODEL_NAME else False
 
 PROMPT_TEMPLATE = """
@@ -38,7 +38,7 @@ You are an expert AI assistant specializing in generating medical radiology repo
 
 ---
 **Generated Radiology Report:**
-""" + "\n/nothink" if reasoning_model else ""
+""" + ("\n/nothink" if reasoning_model else "")
 
 
 PROMPT_TEMPLATE_WITHOUT_RAG = """
@@ -58,7 +58,7 @@ You are an expert AI assistant specializing in generating medical radiology repo
 
 ---
 **Generated Radiology Report:**
-""" + "\n/nothink" if reasoning_model else ""
+""" + ("\n/nothink" if reasoning_model else "")
 
 
 def main():
