@@ -39,3 +39,4 @@ torchaudio
 ultralytics
 thefuzz
 python-Levenshtein
+markdown-pdf

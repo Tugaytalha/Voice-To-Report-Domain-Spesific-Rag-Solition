@@ -6,6 +6,7 @@ import whisper
 from tqdm import tqdm
 import gc
 import argparse
+from markdown_pdf import MarkdownPdf, Section
 
 from query_data import QueryData
 from get_embedding_function import get_embedding_function
@@ -14,7 +15,8 @@ from get_embedding_function import get_embedding_function
 STEP_DEFAULT = "report"
 TEST_DATA_PATH = "test_data/anadolu"
 TRANSCRIPT_PATH = "test_data/transcriptions"
-LLM_MODEL = "symptoma/medgemma3:27b"
+LLM_MODEL = "gemma3"
+# "symptoma/medgemma3:27b", "gemma3", "alibayram/medgemma:latest"
 RESULTS_PATH = "test_data/results" + "_" + LLM_MODEL.split("/")[-1].split(":")[0]
 WHISPER_MODEL = "large-v3-turbo"
 # Use the same embedding model as your production environment
@@ -122,29 +124,52 @@ def run_report_generation_step():
                 print(f"   Skipping empty transcription file: {transcript_path.name}")
                 continue
 
-            # 1. Generate Report via RAG
+            # 1. Generate Report via RAG or without RAG
+            rag = False
             print("   Generating report with LLM...")
-            response, _ = QueryData.query_rag(
-                query_text=transcription,
-                embedding_function=embedding_function,
-                model=LLM_MODEL,
-                augmentation="None",
-                multi_query=True
-            )
+            if rag:
+                response, _ = QueryData.query_rag(
+                    query_text=transcription,
+                    embedding_function=embedding_function,
+                    model=LLM_MODEL,
+                    augmentation="None",
+                    multi_query=True
+                )
+            else:
+                response = QueryData.query(
+                    query_text=transcription,
+                    embedding_function=embedding_function,
+                    model=LLM_MODEL
+                )
             print("   Report generated successfully.")
 
-            # 2. Save the report
-            report_filename = transcript_path.stem + ".md"
-            report_filepath = Path(RESULTS_PATH) / report_filename
-            with open(report_filepath, "w", encoding="utf-8") as f:
-                f.write(f"# Radiology Report for {transcript_path.name}\n\n")
-                f.write("## Transcription\n")
-                f.write(f"```\n{transcription}\n```\n\n")
-                f.write("## AI-Generated Report\n")
-                f.write(response)
+            # 2. Build markdown content
+            md_content = (
+                f"# Radiology Report for {transcript_path.name}\n\n"
+                "## Transcription\n"
+                f"```\n{transcription}\n```\n\n"
+                "## AI-Generated Report\n"
+                f"{response}"
+            )
+
+            # Save markdown (optional, useful for debugging/evaluation)
+            md_filename = transcript_path.stem + ".md"
+            md_filepath = Path(RESULTS_PATH) / md_filename
+            with open(md_filepath, "w", encoding="utf-8") as f:
+                f.write(md_content)
+
+            # Convert markdown to PDF
+            pdf_filename = transcript_path.stem + ".pdf"
+            pdf_filepath = Path(RESULTS_PATH) / pdf_filename
+            try:
+                pdf = MarkdownPdf(toc_level=2, optimize=True)
+                pdf.add_section(Section(md_content))
+                pdf.save(str(pdf_filepath))
+            except Exception as pdf_err:
+                print(f"   ⚠️ PDF generation failed for {transcript_path.name}: {pdf_err}")
 
             elapsed_time = time.time() - start_time
-            print(f"   ✅ Saved report to {report_filepath} (total time: {elapsed_time:.2f}s)")
+            print(f"   ✅ Saved report to {pdf_filepath} (total time: {elapsed_time:.2f}s)")
 
         except Exception as e:
             print(f"   ❌ Error generating report for {transcript_path.name}: {e}")
