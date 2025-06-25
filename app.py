@@ -112,7 +112,8 @@ def process_query(
         embedding_model: str,
         llm_model: str,
         use_multi_query: bool,
-        query_augmentation: str
+        query_augmentation: str,
+        generate_visualization: bool
 ) -> tuple[str, gr.Dataframe, str, str, str]:
     if not os.path.exists("chroma"):
         return "Error: Database not found. Please populate the database first.", None, "❌ Database not found", None, None
@@ -146,29 +147,26 @@ def process_query(
             for chunk in chunks
         ]
 
-        # Generate visualization
+        # Generate visualization (optional)
         visualization_path = None
-        # try:
-        # Get all chunk embeddings from the database
-        all_chunk_data = get_all_chunk_embeddings()
-        if any(all_chunk_data) and 'embeddings' in all_chunk_data:
-            all_chunk_embeddings = np.array(all_chunk_data["embeddings"])
+        if generate_visualization:
+            all_chunk_data = get_all_chunk_embeddings()
+            if any(all_chunk_data) and 'embeddings' in all_chunk_data:
+                all_chunk_embeddings = np.array(all_chunk_data["embeddings"])
 
-            # Get query embedding
-            query_embedding = np.array(embedding_func.embed_query(question))
+                # Get query embedding
+                query_embedding = np.array(embedding_func.embed_query(question))
 
-            # Get embeddings for retrieved chunks
-            retrieved_embeddings = np.array([embedding_func.embed_query(chunk['content']) for chunk in chunks])
+                # Get embeddings for retrieved chunks
+                retrieved_embeddings = np.array([embedding_func.embed_query(chunk['content']) for chunk in chunks])
 
-            # Create visualization
-            visualization_path = visualize_query_embeddings(
-                question,
-                query_embedding,
-                all_chunk_embeddings,
-                retrieved_embeddings
-            )
-        # except Exception as viz_error:
-        #     print(f"Visualization error (non-critical): {str(viz_error)}")
+                # Create visualization
+                visualization_path = visualize_query_embeddings(
+                    question,
+                    query_embedding,
+                    all_chunk_embeddings,
+                    retrieved_embeddings
+                )
 
         # Calculate sources for display
         sources = ", ".join(set([chunk['source'] for chunk in chunks]))
@@ -271,7 +269,7 @@ with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.th
                     gr.Markdown("### Model Settings")
                     llm_dropdown = gr.Dropdown(
                         choices=LLM_MODELS,
-                        value=LLM_MODELS[0] if LLM_MODELS else None,
+                        value="gemma3:latest" if "gemma3:latest" in LLM_MODELS else (LLM_MODELS[0] if LLM_MODELS else None),
                         label="LLM Model",
                         info="Select the large language model for response generation"
                     )
@@ -299,6 +297,12 @@ with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.th
                         info="How to augment the query for better search results"
                     )
 
+                    generate_viz_checkbox = gr.Checkbox(
+                        label="Generate Visualization",
+                        value=False,
+                        info="Create query-document embedding visualization (may take extra time)"
+                    )
+
         with gr.Row():
             with gr.Column(scale=2):
                 gr.Markdown("### Visualization")
@@ -322,7 +326,8 @@ with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.th
                 embedding_dropdown,
                 llm_dropdown,
                 multi_query_checkbox,
-                query_augmentation_dropdown
+                query_augmentation_dropdown,
+                generate_viz_checkbox
             ],
             outputs=[output, chunks_output, status_display, viz_output, download_button]
         )
