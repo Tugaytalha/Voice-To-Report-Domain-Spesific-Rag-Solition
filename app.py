@@ -41,6 +41,17 @@ DATA_PATH = "data"
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large", "large-v3-turbo"]
 DEFAULT_MODEL = "tiny"
 
+# CSS to ensure long lines wrap in code blocks for PDF generation
+WRAP_CSS = """
+pre, code {
+    white-space: pre-wrap; /* CSS3 */
+    white-space: -moz-pre-wrap; /* Mozilla */
+    white-space: -pre-wrap; /* Opera 4-6 */
+    white-space: -o-pre-wrap; /* Opera 7 */
+    word-wrap: break-word; /* IE */
+}
+"""
+
 # Suppress specific warnings if needed (e.g., FP16 on CPU)
 warnings.filterwarnings("ignore", category=UserWarning, message="FP16 is not supported on CPU; using FP32 instead")
 
@@ -186,7 +197,7 @@ def process_query(
         # Convert markdown to PDF
         try:
             pdf = MarkdownPdf(toc_level=2, optimize=True)
-            pdf.add_section(Section(md_content))
+            pdf.add_section(Section(md_content), user_css=WRAP_CSS)
             pdf.save(report_filepath)
         except Exception as pdf_err:
             # Fallback: save markdown if PDF generation fails
@@ -277,7 +288,7 @@ with gr.Blocks(title="InsightBridge AI: Radiology Report Generator", theme=gr.th
                     gr.Markdown("### Advanced Options")
                     multi_query_checkbox = gr.Checkbox(
                         label="Use Multi-Query Generation",
-                        value=False,
+                        value=True,
                         info="Generate multiple search queries to improve retrieval for complex questions"
                     )
 

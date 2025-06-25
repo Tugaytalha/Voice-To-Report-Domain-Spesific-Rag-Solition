@@ -22,6 +22,17 @@ WHISPER_MODEL = "large-v3-turbo"
 # Use the same embedding model as your production environment
 EMBEDDING_MODEL = "Omerhan/intfloat-fine-tuned-14376-v4"
 
+# CSS to ensure long lines wrap in code blocks for PDF generation
+WRAP_CSS = """
+pre, code {
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    white-space: -o-pre-wrap;
+    word-wrap: break-word;
+}
+"""
+
 # --- Global Variables ---
 embedding_function = None
 
@@ -163,7 +174,7 @@ def run_report_generation_step():
             pdf_filepath = Path(RESULTS_PATH) / pdf_filename
             try:
                 pdf = MarkdownPdf(toc_level=2, optimize=True)
-                pdf.add_section(Section(md_content))
+                pdf.add_section(Section(md_content), user_css=WRAP_CSS)
                 pdf.save(str(pdf_filepath))
             except Exception as pdf_err:
                 print(f"   ⚠️ PDF generation failed for {transcript_path.name}: {pdf_err}")

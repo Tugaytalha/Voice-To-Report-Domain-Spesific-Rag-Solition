@@ -87,7 +87,7 @@ class QueryData:
     def init_model(model_name: str):
         """Initialize the Ollama model"""
         if QueryData.model is None:
-            QueryData.model = Ollama(model=model_name, num_ctx=64000, temperature=0.0, verbose=True)
+            QueryData.model = Ollama(model=model_name, num_ctx=32000, temperature=0.0, verbose=True)
         
     @staticmethod
     def generate_with_llm(prompt: str, model: str = "gemma3"):
