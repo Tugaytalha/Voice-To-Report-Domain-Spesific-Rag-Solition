@@ -2,6 +2,9 @@
 
 This project implements a system that allows users to ask questions about their documents (PDFs) using natural language, including voice input. The system leverages a Retrieval Augmented Generation (RAG) architecture to generate answers using a Large Language Model (LLM).
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Tugaytalha/Voice-To-Report-Domain-Spesific-Rag-Solition)
+
+
 ## Key Features
 
 - **Speech-to-Text Input**: Ask questions using your voice (supports microphone input and audio file uploads).
