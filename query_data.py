@@ -29,12 +29,32 @@ You are an expert AI assistant specializing in generating medical radiology repo
 5.  Maintain a professional, objective, and clinical tone. Do not add any information not present in the transcript.
 
 ---
-**Context from Knowledge Base (if any):**
+**Context from Knowledge Base:**
 {context}
 
 ---
 **Doctor's Dictation Transcript:**
 {question}
+
+---
+**Generated Radiology Report:**
+""" + "\n/nothink" if reasoning_model else ""
+
+
+PROMPT_TEMPLATE_WITHOUT_RAG = """
+You are an expert AI assistant specializing in generating medical radiology reports. Your task is to convert a raw, unstructured doctor's dictation transcript into a formal, well-structured radiology report in Turkish.
+
+**Instructions:**
+1.  Analyze the provided `{question}`.
+2.  Extract all relevant medical findings, technical details, and patient metadata.
+3.  Structure the information into the following formal sections:
+    *   **Header:** Extract `ACC No`, `Islem No`, `Istem Tarihi`, `Çekim Tarihi`, `Onay Tarihi`. If any are missing, leave them blank.
+    *   **TETKİK ADI:** The name of the examination.
+    *   **TEKNİK:** Describe the imaging technique, parameters, and contrast usage.
+    *   **BULGULAR (FINDINGS):** Detail the objective findings in a systematic order (e.g., posterior fossa, supratentorial, ventricles, bones). This should be a descriptive paragraph.
+    *   **SONUÇ / YORUM (IMPRESSION / CONCLUSION):** Summarize the most critical findings and provide any recommendations. This should be a concise, numbered list.
+4.  The final report must be entirely in **Turkish**.
+5.  Maintain a professional, objective, and clinical tone. Do not add any information not present in the transcript.
 
 ---
 **Generated Radiology Report:**
@@ -171,8 +191,19 @@ class QueryData:
             print(formatted_response)
 
         return response_text, chunks_with_metadata
-
+    
     @staticmethod
+    def query(query_text: str, embedding_function, model: str = "gemma3"):
+        """
+        Query the system without RAG with the given query text and get the response.
+        """
+        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE_WITHOUT_RAG)
+        prompt = prompt_template.format(question=query_text)
+
+        response_text = QueryData.generate_with_llm(prompt, model=model)
+
+        return response_text
+                                   
     def augment_query(query: str, augmentation: str, model: str = "gemma3") -> str:
         """
         Augment the query text with the given augmentation type, tailored for radiology.
