@@ -8,6 +8,7 @@ import torch
 import warnings
 import subprocess
 import gc
+from markdown_pdf import MarkdownPdf, Section
 
 from query_data import QueryData
 from get_embedding_function import get_embedding_function
@@ -163,23 +164,37 @@ def process_query(
         elapsed_time = time.time() - start_time
         status_msg = f"✅ Query processed in {elapsed_time:.2f} seconds | Sources: {sources}"
         
-        # Create markdown content for download
-        md_content = f"# Radiology Report\n\n"
-        md_content += f"## Query/Transcription\n\n"
-        md_content += f"```\n{question}\n```\n\n"
-        md_content += f"## AI-Generated Report\n\n"
-        md_content += f"{response}\n\n"
-        md_content += f"## Retrieved Sources\n\n"
-        md_content += f"`{sources}`\n"
-        
-        # Save to a file
+        # Create markdown content
+        md_content = (
+            "# Radiology Report\n\n"
+            "## Query/Transcription\n\n"
+            f"```\n{question}\n```\n\n"
+            "## AI-Generated Report\n\n"
+            f"{response}\n\n"
+            "## Retrieved Sources\n\n"
+            f"`{sources}`\n"
+        )
+
+        # Ensure reports directory exists
         os.makedirs(REPORTS_PATH, exist_ok=True)
+
+        # Generate PDF filename and path
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-        report_filename = f"report_{timestamp}.md"
+        report_filename = f"report_{timestamp}.pdf"
         report_filepath = os.path.join(REPORTS_PATH, report_filename)
 
-        with open(report_filepath, "w", encoding="utf-8") as f:
-            f.write(md_content)
+        # Convert markdown to PDF
+        try:
+            pdf = MarkdownPdf(toc_level=2, optimize=True)
+            pdf.add_section(Section(md_content))
+            pdf.save(report_filepath)
+        except Exception as pdf_err:
+            # Fallback: save markdown if PDF generation fails
+            fallback_path = report_filepath.replace(".pdf", ".md")
+            with open(fallback_path, "w", encoding="utf-8") as f:
+                f.write(md_content)
+            report_filepath = fallback_path
+            print(f"⚠️ PDF generation failed ({pdf_err}). Markdown saved instead: {fallback_path}")
 
         return response, gr.Dataframe(
             headers=['Source', 'Content', 'Relevance Score'],
